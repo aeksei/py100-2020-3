@@ -1,3 +1,4 @@
+import re
 import random
 
 
@@ -35,18 +36,54 @@ def parse_template(raw_template, unique=True):
         return template
 
 
+# def filter_ip(fn):
+#     def wrapper(*args, **kwargs):
+#         # дейсвие перед вызовом функции
+#
+#         result = fn(*args, **kwargs)
+#
+#         # дейсвие после вызова функции
+#         return result
+#     return wrapper
+
+def filter_ip(pattern):
+    def filter_ip_decorator(fn):
+        def wrapper(*args, **kwargs):
+            filter_pattern = re.compile(pattern)
+
+            local_gen = fn(*args, **kwargs)
+
+            for item in local_gen:  # здесь теперь возвращаются случаные ip адреса
+                # дейсвие перед вызовом нового шага генератора
+                if filter_pattern.fullmatch(item) is not None:  # а здесь мы их фильтруем на каждом шаге генератора
+                    input_ = yield item
+
+                    if input_ is not None:  # это для корутины, для цикла for работать не будет
+                        local_gen.send(input_)
+
+                # дейсвие после вызова нового шага генератора
+
+        return wrapper
+    return filter_ip_decorator
+
+
+# @filter_ip(r"192\.168(?:\.\d{1,3}){2}")
+@filter_ip(r"10(?:\.\d{1,3}){3}")
 def gen_ip(template):
     template = parse_template(template)  # распарсили шаблон и получили список уникальных значений
 
     while True:  # сделать корутину, чтобы принимать новый шаблон
         ip_random = map(random.choice, template)
-        print(list(ip_random))
-        yield ".".join(map(str, ip_random))
+        # print(list(ip_random))
+
+        input_ = yield ".".join(map(str, ip_random))
+        if input_ is not None:
+            pass
 
 
 def main():
     COUNT = 20
-    template = [[192], [168], [1, 5, (100, 150), 200, 240], []]
+    template = [[], [], [], []]
     gen = gen_ip(template)
 
     for _ in range(COUNT):
